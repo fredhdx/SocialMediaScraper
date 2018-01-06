@@ -47,3 +47,4 @@
  
  ## class.py
     + weibo() class definition
+    + text() class definition: functions to decode/encode text get from weibo
