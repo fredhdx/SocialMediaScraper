@@ -63,7 +63,7 @@ def decode_imgurl(imgref,cookie):
             try:
                 html = requests.get(imgref,cookies=cookie, timeout=60)
                 break
-            except Exception as e:
+            except Exception:
                 if time.time() > start_time + connection_timeout:
                     raise Exception('Unable to get connection %s after %s seconds of ConnectionErrors' \
                             % (imgref, self.connection_timeout))
@@ -159,9 +159,9 @@ def download_image_from_list(filepath,start_position=1):
                         break
                     except Exception as e:
                         if time.time() > start_time + 90:
+                            not_connected = True
                             raise Exception('Unable to get connection %s (download image) after 60 \
                                     seconds of ConnectionErrors.跳过' % (imgurl))
-                            not_connected = True
                         else:
                             time.sleep(1)
 

@@ -9,7 +9,6 @@ from config import user_id
 from config import connection_timeout
 from config import pause_interval
 from config import pause_time
-from config import image_format
 
 
 # 日志
@@ -18,7 +17,8 @@ logfile = open(logname,"w+")
 sys.stdout = stream_tee(sys.stdout, logfile)
 
 # 读取微博
-w = Weibo(user_id,filter,cookie)
+w = Weibo(user_id,filter)
+w.set_cookie(cookie)
 w.connection_timeout = connection_timeout
 w.pause_interval = pause_interval
 w.pause_time = pause_time

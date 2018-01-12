@@ -3,13 +3,11 @@
 来自：Github(dingmyu/weibo_analysis)
 """
 
-import pandas as pd
+# import pandas as pd
 import re
 import jieba
 import jieba.analyse
 from collections import Counter
-import sys
-import time
 import jieba.posseg as pseg
 import keywords_new
 import os

@@ -15,9 +15,7 @@
 import os
 import re
 import requests
-import sys
 import traceback
-import csv
 import time
 from datetime import datetime
 from datetime import timedelta
@@ -31,7 +29,7 @@ class Weibo:
     pause_time = 5 # 停顿时长 seconds
 
     # Weibo类初始化
-    def __init__(self, user_id, filter=1, cookie = {"Cookie":""}):
+    def __init__(self, user_id, filter=1):
         self.user = {"user_id":user_id,"username":"","sex":"","region":"","birthday":"","intro":""}  # 用户id，即需要我们输入的数字，如昵称为“Dear-迪丽热巴”的id为1669879400
         self.filter = filter  # 取值范围为0、1，程序默认值为0，代表要爬取用户的全部微博，1代表只爬取用户的原创微博
         self.meta = {"following":0,"followers":0} # 关注数、粉丝数
@@ -42,7 +40,16 @@ class Weibo:
                          # 内容，发布时间，赞，转发，评论
         self.imgurl = [] # 解析后微博图片
         self.imgset = [] # 解析后微博组图
-        self.cookie = cookie
+        self.cookie = {"Cookie":""}
+
+    def set_cookie(self, new_cookie):
+        if type(new_cookie) == 'dict':
+            if "Cookie" in new_cookie:
+                self.cookie = new_cookie
+            else:
+                print("%s has no key \"Cookie\"" % new_cookie)
+        else:
+            print("input not a valid dictionary")
 
     def get_user(self):
         # 获取用户信息
@@ -109,7 +116,7 @@ class Weibo:
             try:
                 html = requests.get(url,cookies = self.cookie).content
                 break
-            except Exception as e:
+            except Exception:
                 if time.time() > start_time + self.connection_timeout:
                     raise Exception('Unable to get connection to %s after %s seconds of ConnectionErrors' \
                             % (url, self.connection_timeout))
