@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+"""
+所有路径为相对路径
+当前目录:
+    + weibo.py
+    + analysis.py
+    + etc
+工作目录:
+    当前目录/weibo/user_id/
+    当前目录/weibo/user_id/images
+"""
+
 import os
 import re
 import requests
@@ -8,7 +19,6 @@ import sys
 import traceback
 import csv
 import time
-import shutil
 from datetime import datetime
 from datetime import timedelta
 from bs4 import BeautifulSoup
@@ -66,8 +76,7 @@ class Weibo:
                 html = requests.get(url,cookies = self.cookie).content
                 break
             except Exception as e:
-                if time.time() > start_time + self.connection_timeout:
-                    raise Exception('Unable to get connection to %s after %s seconds of ConnectionErrors' \
+                if time.time() > start_time + self.connection_timeout: raise Exception('Unable to get connection to %s after %s seconds of ConnectionErrors' \
                             % (url, self.connection_timeout))
                 else:
                     time.sleep(1)
@@ -225,7 +234,6 @@ class Weibo:
             print("共" + str(self.weibo_num) + "条微博,其中" + \
                     str(self.weibo_num2) + "为原创微博")
 
-
     # 解析微博图片
     def decode_image(self):
         print("开始解析微博图片")
@@ -239,6 +247,11 @@ class Weibo:
         if not os.path.isdir(basepath):
             os.makedirs(basepath)
         file_path = basepath + os.path.sep + "img_list.txt"
+
+        if os.path.isfile(file_path):
+            backup_path = basepath + os.path.sep + "img_list-" + datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
+            print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
+            os.rename(file_path, backup_path)
         f = open(file_path,"w")
 
         for weibo in self.weibo:
@@ -248,21 +261,30 @@ class Weibo:
             print("正在解析第%d条微博" % weibo_count)
             if imgref:
                 start_time = time.time()
-                while True:
-                    try:
-                        html = requests.get(imgref,cookies=self.cookie)
+
+                imgurl = imgref
+                try_num = 1
+                while try_num < 10:
+                    while True:
+                        try:
+                            html = requests.get(imgref,cookies=self.cookie)
+                            break
+                        except Exception as e:
+                            if time.time() > start_time + self.connection_timeout:
+                                raise Exception('Unable to get connection %s after %s seconds of ConnectionErrors' \
+                                        % (imgref, self.connection_timeout))
+                            else:
+                                time.sleep(1)
+                    if html.url == imgref:
+                        soup = BeautifulSoup(html.content,"lxml")
+                        imgurl = soup.findAll("a",href=re.compile(r'^http://',re.I))[0]['href']
+                    else:
+                        imgurl = html.url
+
+                    if imgurl != imgref:
                         break
-                    except Exception as e:
-                        if time.time() > start_time + self.connection_timeout:
-                            raise Exception('Unable to get connection %s after %s seconds of ConnectionErrors' \
-                                    % (imgref, self.connection_timeout))
-                        else:
-                            time.sleep(1)
-                if html.url == imgref:
-                    soup = BeautifulSoup(html.content,"lxml")
-                    imgurl = soup.findAll("a",href=re.compile(r'^http://',re.I))[0]['href']
-                else:
-                    imgurl = html.url
+                    try_num += 1
+
                 self.imgurl.append(imgurl)
                 urllist_set.add(imgurl)
                 f.write(str(weibo_count) + "," + imgurl + '\n')
@@ -277,24 +299,33 @@ class Weibo:
                     html = requests.get(imgsetref,cookies=self.cookie).content
                     soup = BeautifulSoup(html,"lxml")
                     imgurl_set = soup.findAll('a',href=re.compile(r'^/mblog/oripic',re.I))
-                    for imgurl in imgurl_set:
+                    for imgrefpack in imgurl_set:
                         start_time = time.time()
-                        while True:
-                            try:
-                                html2 = requests.get('http://weibo.cn' + re.sub(r"amp;", '', imgurl['href']), \
-                                            cookies=self.cookie)
+
+                        try_num = 1
+                        imgref = 'http://weibo.cn' + re.sub(r"amp;", '', imgrefpack['href'])
+                        imgurl = imgref
+                        while try_num < 10:
+                            while True:
+                                try:
+                                    html2 = requests.get(imgref,cookies=self.cookie)
+                                    break
+                                except Exception as e:
+                                    if time.time() > start_time + self.connection_timeout:
+                                        raise Exception('Unable to get connection %s after %s seconds of \
+                                                ConnectionErrors' % (imgref, self.connection_timeout))
+                                    else:
+                                        time.sleep(1)
+                            if html2.url == imgref:
+                                soup2 = BeautifulSoup(html2.content,"lxml")
+                                imgurl = soup2.findAll("a",href=re.compile(r'^http://',re.I))[0]['href']
+                            else:
+                                imgurl = html2.url
+
+                            if imgurl != imgref:
                                 break
-                            except Exception as e:
-                                if time.time() > start_time + self.connection_timeout:
-                                    raise Exception('Unable to get connection %s after %s seconds of \
-                                            ConnectionErrors' % (imgurl['href'], self.connection_timeout))
-                                else:
-                                    time.sleep(1)
-                        if html2.url == imgurl['href']:
-                            soup2 = BeautifulSoup(html2.content,"lxml")
-                            imgurl = soup2.findAll("a",href=re.compile(r'^http://',re.I))[0]['href']
-                        else:
-                            imgurl = html2.url
+                            try_num += 1
+
                         tmp_set.append(imgurl)
                         urllist_set.add(imgurl)
                         f.write(str(weibo_count) + "," + imgurl + '\n')
@@ -321,11 +352,12 @@ class Weibo:
         duration = end - start
         print("完毕. 共耗时%s" % '{:02}:{:02}:{:02}'.format(duration//3600, duration%3600//60, duration%60))
         print("共解析%d条微博, %d张图片" % (weibo_count-1,pic_count))
-        print("平均每张耗时: s" % (duration/pic_count))
+        print("平均每张耗时: %s" % (duration/pic_count))
 
         # 保存urllist_set
         f.close()
 
+    # 输出微博内容
     def write_txt(self):
         try:
             if self.filter:
@@ -362,6 +394,18 @@ class Weibo:
             file_path = file_dir + os.path.sep + "%d" % self.user['user_id'] + ".txt"
             file_path_c = file_dir + os.path.sep + "%d" % self.user['user_id'] + "-compact.txt"
 
+            if os.path.isfile(file_path):
+                backup_path = file_dir + os.path.sep + str(self.user['user_id']) + '-' + \
+                        datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
+                print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
+                os.rename(file_path, backup_path)
+
+            if os.path.isfile(file_path_c):
+                backup_path_c = file_dir + os.path.sep + str(self.user['user_id']) + '-compact-' + \
+                        datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
+                print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path_c.split(os.path.sep)[-1]))
+                os.rename(file_path_c, backup_path_c)
+
             f = open(file_path, "w")
             f2 = open(file_path_c,'w')
             f.write(result)
@@ -372,6 +416,25 @@ class Weibo:
         except Exception as e:
             print(e)
             traceback.print_exc()
+
+    # 输出imgreflist
+    def write_imgref_list(self):
+        file_dir = os.getcwd() + os.path.sep + "weibo" + os.path.sep + str(self.user['user_id'])
+        if not os.path.isdir(file_dir):
+            os.makedirs(file_dir)
+        file_path = file_dir + os.path.sep + "imgref_list.txt"
+
+        if os.path.isfile(file_path):
+            backup_path = file_dir + os.path.sep + "imgref_list-" + datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
+            print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
+            os.rename(file_path, backup_path)
+
+        with open(file_path,'w') as f:
+            i = 1
+            for each in self.weibo:
+                f.write(str(i) + ', ' + each['imgref'] + '\n')
+                f.write(str(i) + ', ' + each['imgsetref'] + '\n')
+                i += 1
 
     # 储存图片,默认储存封面图片(single),可选储存所有组图("all")
     def download_image(self,option="single"):
@@ -424,10 +487,12 @@ class Weibo:
 
                     extension = imgurl[-4:] # .jpg
                     temp = tmp_dir + os.path.sep + str(weibo_count) + extension
-                    if r.status_code == 200:
+                    if os.path.isfile(temp):
+                        print("文件已存在 %s" % temp)
+                    elif r.status_code == 200:
                         with open(temp,'wb') as f:
-                            r.raw.decode_content = True
-                            shutil.copyfileobj(r.raw,f)
+                            for chunk in r.iter_content(chunk_size=512 * 1024):
+                                f.write(chunk)
 
                     print("已下载 %s" % temp)
                     img_count += 1
@@ -456,11 +521,12 @@ class Weibo:
                                 else:
                                     time.sleep(1)
 
-                        if r.status_code == 200:
+                        if os.path.isfile(temp):
+                            print("文件已存在 %s" % temp)
+                        elif r.status_code == 200:
                             with open(temp,'wb') as f:
-                                r.raw.decode_content = True
-                                shutil.copyfileobj(r.raw,f)
-
+                                for chunk in r.iter_content(chunk_size=512 * 1024):
+                                    f.write(chunk)
                         print("已下载第%s张图片" % x)
                         img_count += 1
                         x += 1
@@ -478,11 +544,74 @@ class Weibo:
                 duration%60))
         print("保存路径:%s" % image_path)
 
+    # 从txt读取微博
+    def get_weibo_from_file(self,inputfile):
+        """
+        路径格式：从当前文件夹开始计算
+        默认：/weibo/user_id/user_id.txt
+        """
+        print("从%s微博文档创立Weibo() object" % inputfile.split(os.path.sep)[-1])
+
+        inputfile = os.getcwd() + os.path.sep + inputfile
+
+        if not os.path.isfile(inputfile):
+            print("文件不存在 %s\n读取失败" % inputfile)
+            return
+
+        from utilities import read_weibo_file
+        file_result = read_weibo_file(inputfile)
+        user = file_result['user']
+        content = file_result['content']
+        time = file_result['publish_time']
+        meta = file_result['meta']
+
+        self.user['user_id'] = user['user_id']
+        self.user['username'] = user['username']
+        self.weibo_num = user['weibo_num']
+        self.meta["following"] = user['following']
+        self.meta["followers"] = user['followers']
+
+        self.weibo_num2 = len(content)
+
+        for i in range(self.weibo_num2):
+            _weibo = {"weibo_content":content[i], "publish_time": time[i], "up_num":meta[i]['up_num'], \
+                    "retweet_num":meta[i]['retweet_num'],"comment_num":meta[i]['comment_num'], \
+                    "imgref": "", "imgsetref":""}
+            self.weibo.append(_weibo)
+
+    # 从imgreflist读取imgref
+    def get_imgref_from_file(self,inputfile):
+        """
+        路径格式：从当前文件夹开始计算
+        默认：/weibo/user_id/imgref.txt
+        """
+        print("从%s读取imgrefs" % inputfile)
+
+        inputfile = os.getcwd() + os.path.sep + inputfile
+        if not os.path.isfile(inputfile):
+            print("文件不存在 %s\n读取失败" % inputfile)
+            return
+
+        img_weibo_count = 0
+        with open(inputfile,'r') as f:
+            for line in f:
+                weibo_title, refurl = line.split(',')
+                if re.search(r'^http://weibo.cn/mblog/oripic.*', refurl.strip(), re.I):
+                    self.imgref[int(weibo_title) - 1] = refurl.strip()
+                    img_weibo_count += 1
+                if re.search(r'^http://weibo.cn/mblog/picAll.*', refurl.strip(), re.I):
+                    self.imgset[int(weibo_title) - 1] = refurl.strip()
+                    img_weibo_count += 1
+
+        print("imgrefs 读取完毕")
+        print("共%s条微博，其中%s拥有图片" % (self.weibo_num, img_weibo_count))
+
     def start(self):
         try:
-            self.read_user()
-            self.read_weibo()
+            self.get_user()
+            self.get_weibo()
             self.write_txt()
+            self.write_imgref_list()
         except Exception as e:
             print(e)
             traceback.print_exc()
