@@ -149,7 +149,7 @@ class Weibo:
                 try:
                     html = requests.get(url,cookies = self.cookie).content
                     break
-                except Exception as e:
+                except Exception:
                     if time.time() > start_time + self.connection_timeout:
                         raise Exception('Unable to get connection to %s after %s seconds of ConnectionErrors' \
                                 % (url, self.connection_timeout))
@@ -480,7 +480,8 @@ class Weibo:
                     if len(imgurl.split("/")[-1].split(".")) <= 1:
                         print("无效图片链接: " + imgurl)
                         continue
-
+                        
+                    start_time = time.time()
                     while True:
                         try:
                             r = requests.get(imgurl,stream=True)
