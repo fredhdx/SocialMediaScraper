@@ -43,7 +43,7 @@ class Weibo:
         self.cookie = {"Cookie":""}
 
     def set_cookie(self, new_cookie):
-        if type(new_cookie) == 'dict':
+        if isinstance(new_cookie,dict):
             if "Cookie" in new_cookie:
                 self.cookie = new_cookie
             else:
@@ -480,7 +480,7 @@ class Weibo:
                     if len(imgurl.split("/")[-1].split(".")) <= 1:
                         print("无效图片链接: " + imgurl)
                         continue
-                        
+
                     start_time = time.time()
                     while True:
                         try:

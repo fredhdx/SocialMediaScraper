@@ -22,12 +22,7 @@ w.set_cookie(cookie)
 w.connection_timeout = connection_timeout
 w.pause_interval = pause_interval
 w.pause_time = pause_time
-w.get_user()
-w.get_weibo()
-
-# 输出结果
-w.write_txt()
-w.write_imgref_list()
+w.start()
 
 # 下载图片,deprecated（请用utilities进行)
 """
