@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# dependencies
 import sys
 from datetime import datetime
 from utilities import stream_tee
 from weibo import Weibo
+
+# configuration parameters
 from config import cookie
 from config import filter
 from config import user_id
@@ -23,16 +26,5 @@ w.connection_timeout = connection_timeout
 w.pause_interval = pause_interval
 w.pause_time = pause_time
 w.start()
-
-# 下载图片,deprecated（请用utilities进行)
-"""
-通过run_read读取微博并输出：
-    1./weibo/user_id/user_id-compact.txt
-    2./weibo/user_id/img_list.txt
-通过utilities.repair_image_list修复未解析链接
-    mv img_list-new.txt img_list.txt
-通过utilities.download_from_list开始下载
-"""
-
 
 logfile.close()

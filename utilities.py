@@ -13,9 +13,11 @@ import re
 import os
 import time
 import requests
+import traceback
 from bs4 import BeautifulSoup
 from config import cookie
 from config import pause_time
+from config import line_to_buffer
 from datetime import datetime
 
 class stream_tee(object):
@@ -75,6 +77,7 @@ def decode_imgurl(imgref,cookie):
             try:
                 imgurl = soup.findAll("a",href=re.compile(r'^http://',re.I))[0]['href']
             except IndexError: # 读取过快导致未能读取网页，重新读取
+                print("读取过快")
                 imgurl = imgref
                 time.sleep(1)
         else:
@@ -295,7 +298,7 @@ def decode_imgreflist(inputfile,start_position=1):
         print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
         os.rename(file_path, backup_path)
 
-    fo = open(file_path,"w")
+    fo = open(file_path,"w",line_to_buffer)
     img_weibo_count = 0
     img_count = 0
     with open(inputfile,'r') as f:
@@ -306,7 +309,7 @@ def decode_imgreflist(inputfile,start_position=1):
                     if re.search(r'^http://weibo.cn/mblog/oripic.*', refurl.strip(), re.I):
                         imgref = refurl.strip()
                         if imgref:
-                            print("正在解析第%d条微博原图" % (img_weibo_count+1))
+                            print("正在解析第%d条微博原图" % int(weibo_title))
                             newurl = decode_imgurl(imgref,cookie)
                             if newurl:
                                 print("已解析")
@@ -316,7 +319,7 @@ def decode_imgreflist(inputfile,start_position=1):
                     elif re.search(r'^http://weibo.cn/mblog/picAll.*', refurl.strip(), re.I):
                         imgsetref = refurl.strip()
                         if imgsetref:
-                            print("正在解析第%d条微博组图" % (img_weibo_count+1))
+                            print("正在解析第%d条微博组图" % int(weibo_title))
                             try:
                                 html = requests.get(imgsetref,cookies=cookie).content
                                 soup = BeautifulSoup(html,"lxml")
