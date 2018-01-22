@@ -218,9 +218,20 @@ def repair_image_list(filepath):
 
     fo.close()
 
+def reformat_time(time_string):
+    if len(time_string) >= 16:
+        year = time_string[:4]
+        month = time_string[5:7]
+        day = time_string[8:10]
+        hour = time_string[11:13]
+        minute = time_string[14:16]
+        return year + month + day + hour + minute
+    else:
+        return time_string
+
 def read_weibo_file(inputfile):
     try:
-        f = open(inputfile,'r')
+        f = open(inputfile,'rt', encoding='utf-8')
     except Exception as e:
         print(e)
 
@@ -246,7 +257,7 @@ def read_weibo_file(inputfile):
     for line in f:
         if line != '\n':
             if re.search(r'^发布时间.*',line):
-                publish_time.append(line[5:])
+                publish_time.append(reformat_time(line[5:].strip()))
             elif re.search(r'^点赞数.*',line):
                 pattern = r"\d+\.?\d*"
                 guid = re.findall(pattern,line,re.S | re.M)
