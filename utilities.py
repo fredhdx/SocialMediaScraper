@@ -14,6 +14,8 @@ import os
 import time
 import requests
 import traceback
+import platform
+import shutil
 from bs4 import BeautifulSoup
 from config import cookie
 from config import pause_time
@@ -239,7 +241,7 @@ def read_weibo_file(inputfile):
 
     # 用户信息
     next(f) # 用户信息
-    username = next(f)[5:]
+    username = next(f)[5:].strip()
     user_id = int(next(f)[5:])
     weibo_num = int(next(f)[4:])
     following = int(next(f)[4:])
@@ -257,7 +259,7 @@ def read_weibo_file(inputfile):
     for line in f:
         if line != '\n':
             if re.search(r'^发布时间.*',line):
-                publish_time.append(reformat_time(line[5:].strip()))
+                publish_time.append(line[5:].strip())
             elif re.search(r'^点赞数.*',line):
                 pattern = r"\d+\.?\d*"
                 guid = re.findall(pattern,line,re.S | re.M)
@@ -268,9 +270,10 @@ def read_weibo_file(inputfile):
             else:
                 weibo_content = weibo_content + line
         else:
-            content.append(weibo_content)
+            content.append(':'.join(weibo_content.split(':')[1:]))
             weibo_content = ""
             weibo_num += 1
+
 
         # 检查空集
         if len(content) < weibo_num:
@@ -355,3 +358,100 @@ def decode_imgreflist(inputfile,start_position=1):
     print("所有链接解析完毕")
     print("共%d条配图微博，共%d张图片" % (img_weibo_count,img_count))
     print("储存于: " + file_path)
+
+def remove_nbws(text):
+    """ remove unwanted unicode punctuation: zwsp, nbws, \t, \r, \r.
+    """
+
+    # ZWSP: Zero width space
+    text = text.replace(u'\u200B', '')
+    # NBWS: Non-breaking space
+    text = text.replace(u'\xa0', ' ')
+    # HalfWidth fullstop
+    text = text.replace(u'\uff61', '')
+    # Bullet
+    text = text.replace(u'\u2022', '')
+    # White space
+    text = text.replace(u'\t', ' ').replace(u'\r', ' ')
+
+    # General Punctuation
+    gpc_pattern = re.compile(r'[\u2000-\u206F]')
+    text = gpc_pattern.sub('', text)
+
+    # Mathematical Operator
+    mop_pattern = re.compile(r'[\u2200-\u22FF]')
+    text = mop_pattern.sub('', text)
+
+    # Combining Diacritical Marks
+    dcm_pattern = re.compile(r'[\u0300-\u036F]')
+    text = dcm_pattern.sub('', text)
+
+    # Hangul Syllable
+    hangul_pattern = re.compile(r'[\uac00-\ud7af]')
+    text = hangul_pattern.sub('',text)
+
+    lsp_pattern = re.compile(r'[\x80-\xFF]')
+    text = lsp_pattern.sub('', text)
+
+    return text
+
+def legitimize(text, myos=platform.system()):
+    """Converts a string to a valid filename.
+       credit: soimort/you-get.
+       option: filename.
+    """
+    # POSIX systems
+    text = text.translate({
+        0: None,
+        ord('/'): '-',
+        ord('|'): '-',
+        ord(':'): '-',
+        ord('\uFF1A'): ' ',
+    })
+
+    if  myos == 'Windows':
+        # Windows (non-POSIX namespace)
+        text = text.translate({
+            # Reserved in Windows VFAT and NTFS
+            ord(':'): '-',
+            ord('\uFF1A'): ' ',
+            ord('*'): '-',
+            ord('?'): '-',
+            ord('\\'): '-',
+            ord('\"'): '\'',
+            # Reserved in Windows VFAT
+            ord('+'): '-',
+            ord('<'): '-',
+            ord('>'): '-',
+            ord('['): '(',
+            ord(']'): ')',
+        })
+    else:
+        # *nix
+        if myos == 'Darwin':
+            # Mac OS HFS+
+            text = text.translate({
+                ord(':'): '-',
+            })
+
+        # Remove leading .
+        if text.startswith("."):
+            text = text[1:]
+
+    text = text[:80] # Trim to 82 Unicode characters long
+    return text
+
+def check_backup(working_path):
+    """ Check if files exist in working-path and make a copy
+    """
+    print("check backup")
+    if os.path.isdir(working_path):
+        files = [f for f in os.listdir(working_path) if os.path.isfile(working_path + os.path.sep + f)]
+        if len(files) > 0:
+            backup_dir = working_path + os.path.sep + legitimize(datetime.now().strftime('%Y%m%d-%H%M'))
+            if not os.path.isdir(backup_dir):
+                os.makedirs(backup_dir)
+
+            for i in range(0, len(files)):
+                shutil.copy2(working_path + os.path.sep + files[i], backup_dir + os.path.sep + files[i])
+

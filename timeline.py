@@ -6,8 +6,9 @@
 template: https://bootsnipp.com/snippets/featured/timeline-21-with-images-and-responsive
 """
 import os
-import re
 import sys
+from template import *
+from utilities import reformat_time
 
 class timecard:
 
@@ -31,6 +32,9 @@ class timecard:
         self.meta = weibo['meta']
         self.img_src = [""] * len(self.content)
         self.img_path = [""] * len(self.content)
+
+        for each in self.time: # change Y-m-d H:M to YmdHM
+            each = reformat_time(each)
 
     def load_imgsrc(self, imgfile):
         print("为timecard加载图片超链接")
@@ -73,57 +77,6 @@ class timecard:
 
         print("Total: %d" % len(self.time))
 
-def tempalte_PinkElegance(timecards, ignore_retweet=True):
-    """ A builder for template body: PinkElegance
-        Abandoned for incomplet js generation
-        Source: https://codepen.io/mo7hamed/pen/dRoMwo
-    """
-    # build body
-    body_string = ""
-    for i in range(0, len(timecards.content)):
-
-        if ignore_retweet and timecards.content[i].startswith('转发'):
-            continue
-        else:
-            meta_string = ("点赞：" + str(timecards.meta[i]['up_num']) + " 转发：" + str(timecards.meta[i]['retweet_num'])
-                            + " 评论：" + str(timecards.meta[i]['comment_num']))
-            body_string = body_string + "<li>\n" + "<span></span>\n"
-            body_string = (body_string + "<div class=\"title\">" + timecards.time[i][:4] + "</div>\n"
-                            + "<div class=\"info\">" + timecards.content[i] + "</div>\n"
-                            + "<div class=\"name\">" + meta_string + "</div>\n"
-                            + "<div class=\"time\">" + "\n<span>" + timecards.time[i][4:6] + "月" + timecards.time[i][6:8] + "日</span>\n"
-                            + "<span>" + timecards.time[i][8:10] + ":" + timecards.time[i][10:12] + "</span>\n"
-                            + "</div>")
-    return body_string
-
-def template_FlexBox(timecards, ignore_retweet=True):
-    """ A builder for template: FlexBox
-
-        Source: https://codepen.io/paulhbarker/pen/apvGdv
-    """
-    body_string = ""
-    for i in range(0, len(timecards.content)):
-        if ignore_retweet and timecards.content[i].startswith('转发'):
-            continue
-        else:
-            meta_string = ("点赞：" + str(timecards.meta[i]['up_num']) + " 转发：" + str(timecards.meta[i]['retweet_num'])
-                            + " 评论：" + str(timecards.meta[i]['comment_num']))
-            body_string = (body_string
-                            + "<div class=\"demo-card weibo-card\">\n"
-                            + "<div class=\"head\">\n"
-                            + "<div class=\"number-box\">\n"
-                            + "<span>" + timecards.time[i][6:8] + "</span>\n"
-                            + "</div>"
-                            + "<h2><span class=\"small\">" + timecards.time[i][:4] + "年" + timecards.time[i][4:6] + "月" + "</span>"
-                                + timecards.content[i][:8] + "</h2>\n"
-                            + "</div>\n"
-                            + "<div class=\"body\">\n"
-                            + "<p>" + timecards.content[i][8:] + "\n\n" + meta_string + "</p>\n"
-                            # + "<img src=\"" + timecards.img_src[i] + "\">\n"
-                            + "</div>\n</div>\n\n")
-    return body_string
-
-
 def template_wrapper(timecards, template_name, ignore_retweet=True):
     """ wrapper function to apply timeline tempalte to timecards
     """
@@ -136,10 +89,10 @@ def template_wrapper(timecards, template_name, ignore_retweet=True):
         print("HTML template incomplete.")
         sys.exit()
 
-    with open(header_file, 'r') as hf:
+    with open(header_file, 'rt', encoding='utf-8') as hf:
         header_string = ''.join(hf.readlines())
 
-    with open(tail_file) as tf:
+    with open(tail_file, 'rt', encoding='utf-8') as tf:
         tail_string = ''.join(tf.readlines())
 
     # build body
@@ -147,14 +100,14 @@ def template_wrapper(timecards, template_name, ignore_retweet=True):
     if template_name == "PinkElegance":
         body_string = tempalte_PinkElegance(timecards, ignore_retweet)
     elif template_name == "FlexBox":
-        body_string= template_FlexBox(timecards, ignore_retweet)
+        body_string = template_FlexBox(timecards, ignore_retweet)
+    elif template_name == "PinkStar":
+        body_string = template_PinkStar(timecards,"https://weibo.com/u/5491331848", ignore_retweet)
 
     html_content = header_string + body_string + tail_string
 
     with open(template_path + os.path.sep + "mytimeline.html", 'wt', encoding='utf-8') as f:
         f.write(html_content)
-
-
 
 def build_timeline(user_id, template_name="PinkElegance"):
     """ source_path = os.getcwd() + '/weibo/weibo_id/'
@@ -176,10 +129,3 @@ def build_timeline(user_id, template_name="PinkElegance"):
 
     # choose template
     template_wrapper(timecards, template_name, ignore_retweet)
-
-
-
-def main():
-
-    working_path = os.getcwd() + os.path.sep + 'weibo' + os.path.sep + '5491331848'
-    build_timeline(working_path)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
+#coding: utf8
 
 """
 所有路径为相对路径
@@ -20,6 +21,9 @@ import time
 from datetime import datetime
 from datetime import timedelta
 from bs4 import BeautifulSoup
+import utilities
+import platform
+
 
 class Weibo:
 
@@ -101,7 +105,7 @@ class Weibo:
             print(e)
             traceback.print_exc()
 
-    def get_weibo(self):
+    def get_weibo(self, UPDATE=False, UPDATE_OLDTIME=datetime.now().strftime('%Y-%m-%d %H:%M')):
         # 读取每条微博信息
         #   分times次读取，中途停顿，避免短时间访问次数过多
         #   文字信息储存于: {"content","pub_time","up_num","retweet_num","comment_num"} @ */weibo/weibo.txt
@@ -109,6 +113,7 @@ class Weibo:
 
         page_num = 1
         pic_count = 0
+        update_count = 0
 
         url = "https://weibo.cn/u/%d?filter=%d&page=1" % (self.user['user_id'], self.filter)
         start_time = time.time()
@@ -184,8 +189,9 @@ class Weibo:
                     else:       # str_class == 'ctt'
                         weibo_content = each.find("span",{"class":"ctt"}).text
 
-                    weibo_content = weibo_content.replace(u'\u200b','').replace('\xa0',' ')
-                    print("微博内容：" + weibo_content)
+                    weibo_content = utilities.remove_nbws(weibo_content)
+                    if platform.system() != 'Windows':
+                        print("微博内容：" + weibo_content)
 
                     # 发布时间
                     publish_time = each.findAll("span",{"class":"ct"})[-1].text.split("来自")[0].strip()
@@ -199,7 +205,7 @@ class Weibo:
                         publish_time = today + " " + publish_time[3:]
                     elif "月" in publish_time:
                         publish_time = datetime.now().strftime("%Y") + '-' + publish_time[0:2] \
-                                        + '-' + publish_time[3:5] + '-' + publish_time[7:12]
+                                        + '-' + publish_time[3:5] + ' ' + publish_time[7:12]
                     else:
                         publish_time = publish_time[:16]
                     print("微博发布时间：" + publish_time)
@@ -231,15 +237,26 @@ class Weibo:
 
                     # 储存
                     weibo_instance = {"weibo_content":weibo_content,"publish_time":publish_time,"up_num":up_num,"retweet_num":retweet_num,"comment_num":comment_num, "imgref":imgref,"imgsetref":imgsetref}
-                    self.weibo.append(weibo_instance)
-                    self.weibo_num2 += 1
+
+                    if UPDATE:
+                        if update_count == 0 or datetime.strptime(publish_time, '%Y-%m-%d %H:%M') > datetime.strptime(UPDATE_OLDTIME, '%Y-%m-%d %H:%M'):
+                            self.weibo = [weibo_instance] + self.weibo
+                            self.weibo_num2 += 1
+                            update_count += 1
+                        else:
+                            print("共更新%d条微博" % update_count)
+                            return
+                    else:
+                        self.weibo.append(weibo_instance)
+                        self.weibo_num2 += 1
+
 
         self.pic_count = pic_count
         if not self.filter:
             print("共" + str(self.weibo_num) + "条微博")
         else:
-            print("共" + str(self.weibo_num) + "条微博,其中" + \
-                    str(self.weibo_num2) + "为原创微博")
+            print("共" + str(self.weibo_num) + "条微博,其中"
+                    + str(self.weibo_num2) + "为原创微博")
 
     # 解析微博图片
     def decode_image(self):
@@ -381,7 +398,7 @@ class Weibo:
 
             compact = ""
             compact_count = 1
-            for i in range(1, self.weibo_num2 + 1):
+            for i in range(1, len(self.weibo) + 1):
                 text = (str(i) + ":" + self.weibo[i - 1]['weibo_content'] + "\n" + \
                         "发布时间：" + self.weibo[i - 1]['publish_time'] + "\n" + \
                         "点赞数：" + str(self.weibo[i - 1]['up_num']) + \
@@ -401,20 +418,8 @@ class Weibo:
             file_path = file_dir + os.path.sep + "%d" % self.user['user_id'] + ".txt"
             file_path_c = file_dir + os.path.sep + "%d" % self.user['user_id'] + "-compact.txt"
 
-            if os.path.isfile(file_path):
-                backup_path = file_dir + os.path.sep + str(self.user['user_id']) + '-' + \
-                        datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
-                print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
-                os.rename(file_path, backup_path)
-
-            if os.path.isfile(file_path_c):
-                backup_path_c = file_dir + os.path.sep + str(self.user['user_id']) + '-compact-' + \
-                        datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
-                print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path_c.split(os.path.sep)[-1]))
-                os.rename(file_path_c, backup_path_c)
-
-            f = open(file_path, "w")
-            f2 = open(file_path_c,'w')
+            f = open(file_path, "wt", encoding='utf-8')
+            f2 = open(file_path_c,'wt', encoding='utf-8')
             f.write(result)
             f2.write(compact)
             f.close()
@@ -430,11 +435,6 @@ class Weibo:
         if not os.path.isdir(file_dir):
             os.makedirs(file_dir)
         file_path = file_dir + os.path.sep + "imgref_list.txt"
-
-        if os.path.isfile(file_path):
-            backup_path = file_dir + os.path.sep + "imgref_list-" + datetime.now().strftime('%Y-%m-%d-%H-%M') + ".txt"
-            print("备份 %s > %s" % (file_path.split(os.path.sep)[-1], backup_path.split(os.path.sep)[-1]))
-            os.rename(file_path, backup_path)
 
         with open(file_path,'w') as f:
             i = 1
@@ -560,14 +560,11 @@ class Weibo:
         """
         print("从%s微博文档创立Weibo() object" % inputfile.split(os.path.sep)[-1])
 
-        inputfile = os.getcwd() + os.path.sep + inputfile
-
         if not os.path.isfile(inputfile):
             print("文件不存在 %s\n读取失败" % inputfile)
             return
 
-        from utilities import read_weibo_file
-        file_result = read_weibo_file(inputfile)
+        file_result = utilities.read_weibo_file(inputfile)
         user = file_result['user']
         content = file_result['content']
         time = file_result['publish_time']
@@ -587,6 +584,11 @@ class Weibo:
                     "imgref": "", "imgsetref":""}
             self.weibo.append(_weibo)
 
+    # check file backup
+    def check_backup(self):
+        working_path = os.getcwd() + os.path.sep + "weibo" + os.path.sep + str(self.user['user_id'])
+        utilities.check_backup(working_path)
+
     # 从imgreflist读取imgref
     def get_imgref_from_file(self,inputfile):
         """
@@ -595,7 +597,6 @@ class Weibo:
         """
         print("从%s读取imgrefs" % inputfile)
 
-        inputfile = os.getcwd() + os.path.sep + inputfile
         if not os.path.isfile(inputfile):
             print("文件不存在 %s\n读取失败" % inputfile)
             return
@@ -618,8 +619,33 @@ class Weibo:
         try:
             self.get_user()
             self.get_weibo()
+            self.check_backup()
             self.write_txt()
             self.write_imgref_list()
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+
+    def update(self):
+        try:
+            weibo_file = (os.getcwd() + os.path.sep + "weibo" + os.path.sep + str(self.user['user_id'])
+                            + os.path.sep + str(self.user['user_id']) + '.txt')
+            self.get_weibo_from_file(weibo_file)
+            old_length = len(self.weibo)
+
+            self.get_user() # 更新用户信息
+            UPDATE_OLDTIME = self.weibo[1]['publish_time']
+            self.weibo = self.weibo[1:] # 去掉置顶微博
+
+            self.get_weibo(UPDATE=True, UPDATE_OLDTIME=UPDATE_OLDTIME)
+            new_length = len(self.weibo)
+
+            self.check_backup()
+            self.write_txt() # update txt file
+            self.write_imgref_list() # update imgref_list
+
+
+            print("旧微博数: %d, 新微博数: %d" % (old_length, new_length))
         except Exception as e:
             print(e)
             traceback.print_exc()

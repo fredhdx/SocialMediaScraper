@@ -20,7 +20,7 @@ logfile = open(logname,"w+")
 sys.stdout = stream_tee(sys.stdout, logfile)
 
 # 读取微博
-w = Weibo(user_id,filter)
+w = Weibo(user_id,filter=0)
 w.set_cookie(cookie)
 w.connection_timeout = connection_timeout
 w.pause_interval = pause_interval
