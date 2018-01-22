@@ -33,8 +33,8 @@ class timecard:
         self.img_src = [""] * len(self.content)
         self.img_path = [""] * len(self.content)
 
-        for each in self.time: # change Y-m-d H:M to YmdHM
-            each = reformat_time(each)
+        for i in range(0, len(self.time)): # change Y-m-d H:M to YmdHM
+            self.time[i] = reformat_time(self.time[i])
 
     def load_imgsrc(self, imgfile):
         print("为timecard加载图片超链接")
