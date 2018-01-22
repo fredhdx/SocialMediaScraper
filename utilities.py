@@ -270,7 +270,7 @@ def read_weibo_file(inputfile):
             else:
                 weibo_content = weibo_content + line
         else:
-            content.append(':'.join(weibo_content.split(':')[1:]))
+            content.append(':'.join(weibo_content.split(':')[1:]).strip())
             weibo_content = ""
             weibo_num += 1
 
@@ -441,14 +441,17 @@ def legitimize(text, myos=platform.system()):
     text = text[:80] # Trim to 82 Unicode characters long
     return text
 
-def check_backup(working_path):
+def check_backup(working_path, frequency='1'):
     """ Check if files exist in working-path and make a copy
+        option: 1: only make one backup, other: make backup based on time
     """
-    print("check backup")
     if os.path.isdir(working_path):
         files = [f for f in os.listdir(working_path) if os.path.isfile(working_path + os.path.sep + f)]
         if len(files) > 0:
-            backup_dir = working_path + os.path.sep + legitimize(datetime.now().strftime('%Y%m%d-%H%M'))
+            if frequency == '1':
+                backup_dir = working_path + os.path.sep + "latest_backup"
+            else:
+                backup_dir = working_path + os.path.sep + legitimize(datetime.now().strftime('%Y%m%d-%H%M'))
             if not os.path.isdir(backup_dir):
                 os.makedirs(backup_dir)
 

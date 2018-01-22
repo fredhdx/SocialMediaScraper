@@ -114,6 +114,7 @@ class Weibo:
         page_num = 1
         pic_count = 0
         update_count = 0
+        update_cache = [] # store updated_weibo
 
         url = "https://weibo.cn/u/%d?filter=%d&page=1" % (self.user['user_id'], self.filter)
         start_time = time.time()
@@ -240,11 +241,13 @@ class Weibo:
 
                     if UPDATE:
                         if update_count == 0 or datetime.strptime(publish_time, '%Y-%m-%d %H:%M') > datetime.strptime(UPDATE_OLDTIME, '%Y-%m-%d %H:%M'):
-                            self.weibo = [weibo_instance] + self.weibo
+                            # 置顶微博总被替换
+                            update_cache.append(weibo_instance)
                             self.weibo_num2 += 1
                             update_count += 1
                         else:
-                            print("共更新%d条微博" % update_count)
+                            self.weibo = update_cache + self.weibo
+                            print("共更新%d条微博" % (update_count-1))
                             return
                     else:
                         self.weibo.append(weibo_instance)
@@ -644,8 +647,7 @@ class Weibo:
             self.write_txt() # update txt file
             self.write_imgref_list() # update imgref_list
 
-
-            print("旧微博数: %d, 新微博数: %d" % (old_length, new_length))
+            print("旧微博数: %d, 新微博数: %d\n" % (old_length, new_length))
         except Exception as e:
             print(e)
             traceback.print_exc()
