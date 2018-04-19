@@ -195,8 +195,12 @@ def repair_image_list(filepath):
         return None
 
     outpath = os.path.sep.join(filepath.split(os.path.sep)[:-1])
-    filename = filepath.split(os.path.sep)[-1]
-    newname = outpath + os.path.sep + filename.split('.')[0] + "-new." + filename.split('.')[-1]
+    filename, ext = filepath.split(os.path.sep)[-1].split('.')
+
+    backup_path = outpath + os.path.sep + filename + '-' + datetime.now().strftime('%Y-%m-%d-%H-%M') + '.' + ext
+    shutil.copy2(filepath, backup_path)
+
+    newname = outpath + os.path.sep + filename+ "-new." + ext
 
     # 假设文件名遵从 /weibo/user_id/img_list.txt
     # user_id = int(filepath.split(os.path.sep)[-2])
@@ -219,6 +223,7 @@ def repair_image_list(filepath):
             line_count +=1
 
     fo.close()
+    os.rename(newname, filepath)
 
 def reformat_time(time_string):
     if len(time_string) >= 16:
@@ -457,4 +462,28 @@ def check_backup(working_path, frequency='1'):
 
             for i in range(0, len(files)):
                 shutil.copy2(working_path + os.path.sep + files[i], backup_dir + os.path.sep + files[i])
+
+def create_picText(working_path, user_id):
+    # work path = "SinaSpider-master\weibo\user_id"
+    texts = read_weibo_file(working_path + os.path.sep + str(user_id) + '.txt')
+
+    #userprofile = texts['user'] # {"username":username,"user_id":user_id,"weibo_num":weibo_num,"following":following,"followers":followers}
+    weibo_content = texts['content'] # string
+    publish_time = texts['publish_time']# ["2088-12-12 12:12"]
+    #meta = texts['meta'] # [{"up_num":up_num,"retweet_num":retweet_num,"comment_num":comment_num}]
+
+    picPath = working_path + os.path.sep + 'images' + os.path.sep +  'fromlist'
+    all_picDirectories = [x[0] for x in os.walk(picPath)][1:]
+
+    for _onePic in all_picDirectories:
+        _index = int(_onePic.split(os.path.sep)[-1])
+        _text = publish_time[_index-1] + os.linesep + weibo_content[_index-1]
+
+        f = open(_onePic + os.path.sep + 'text.txt', "wt", encoding='utf-8')
+        f.write(_text)
+        f.close()
+
+        print("图片文字录入完毕: %s" % (str(_index) + ": " + publish_time[_index-1]))
+
+
 
