@@ -42,6 +42,10 @@
 
 **请在任务完成前不要改变生成文件的位置，否则imgref_list.txt和img_list.txt将无法被找到，需要重新解析。**
 
+## 生成微博时间线网页（有限的模板.如需替换请自行手动改动)
+运行`run_timeline.py`(模板请参照`timeline_template`文件夹)
+
+
 ## 输出
 1. /weibo/user_id/user_id.txt
 2. /weibo/user_id/imgref_list.txt
