@@ -1,5 +1,6 @@
 # SinaSpider: A python scrapping package for the Chinese tweeter platform weibo.com
 
+[中文说明](https://github.com/knightReigh/SinaSpider/blob/master/readme-ch.md)
 ## Intro
 
 Weibo.com is the Chinese tweeter platform used by millions of people. This program helps download all published posts and accompanying images from a selected user, along with statistics such as retweet/like numbers for each post.
