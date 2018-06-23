@@ -1,67 +1,129 @@
-# SinaSpider
-新浪微博爬虫程序，得到用户微博及点评信息，下载所有配图。
+# SinaSpider: A python scrapping package for the Chinese tweeter platform weibo.com
 
-# 功能设计
-1. 读取微博：用户信息、微博内容、转评赞数据 [x]
-2. 读取每条微博配图信息：原图 + 组图 [X]
-3. 输出微博内容、图片链接[X]
-4. 下载所有图片[X]
-5. 微博出现关键词分析[X]
-6. 分析结果展示[]
+## Intro
 
-# 使用方法啦啦啦～
-## 读取微博文字内容
-1. 在**config.py**输入微博cookie和目标用户id(请不要使用同一用户cookie和id)
+Weibo.com is the Chinese tweeter platform used by millions of people. This program helps download all published posts and accompanying images from a selected user, along with statistics such as retweet/like numbers for each post.
 
-（获取cookie请阅读[这里](https://github.com/knightReigh/weiboSpider-1))
+This program uses `Python>3.0`, `requests` and `BeautifulSoup` packages, and requires that the user has its own weibo account (so that he/she can obtain a working `cookie`). 
 
-2. **运行`run_read.py` 读取微博信息**
-    + 输出文件: user_id.txt, user_id-compact.txt, imgref_list.txt (文件夹`/weibo/user_id/`)
-        + user_id.txt是所有微博信息(包含用户信息，微博内容，发布时间，点赞转评赞数据)
-        + user_id-compact.txt是纯粹微博内容(每一行为一条微博)
-        + imgref_list.txt是每条微博配图链接（未解析），如没有则为空行
+Because weibo.com performs unpredictable updates that changes its page HTML structure, this program might not work properly at some point in the future. In that case, try submit an [issue](https://github.com/knightReigh/SinaSpider/issues).
 
-## 解析下载微博图片
-1. 运行`run_imgreflist.py`**解析所有链接**
-    + 输出img_list.txt。如果img_list.txt已存在，建立img_list-日期.txt备份。
-        + 如果因为运行太久停顿，请打断程序，已解析内容仍然会被储存在img_list.txt里
-        + 打断后可再次运行，修改`decode_imgreflist(base_dir + os.path.sep + list_path,1)`最后的数字为已解析img_list.txt最后一行的微博计数(`324, http://....../1.jpg`)进行“断点续传”。生成新的img_list.txt。旧的list将被备份。
-        + 解析结束后合并所有img_list即可 
+## Requirement
+`Python>3.0, requests, BeautifulSoup`
 
-        (`cat oldest.txt old.txt img_list.txt > img_list-new.txt; mv img_list-new.txt img_list.txt`)
+A weib.com account.
 
-2. 运行`run_fix.py`**修复img_list.txt中未被成功解析的链接**
-    + 生成img_list-new.txt。请重命名为img_list.txt
-    + 我也不知道为什么上一步不能全部解析成功，欢迎debug...
+## Functions
+1. Obtain user's weibo, obtaining posts, user info, images links, and retweet/likes statistics.
 
-3. 运行`run_downloadimage.py`**开始下载图片**。
-    + 图片被储存在`/weibo/user_id/images/fromlist/`。每条微博一个文件夹。
-    + 程序支持断点续传，无需改变任何代码。打断后继续运行就可以了。
-    
-    *将下载图片分成几个步骤是因为解析和下载都很费时。在需要下载图片过多的情况下长时间连接微博服务器可能会导致连接假死，需要重新运行程序。分步进行保证有效的实时检查和方便断点续传。*
+2. Decode direct download links for images.
 
-**请在任务完成前不要改变生成文件的位置，否则imgref_list.txt和img_list.txt将无法被找到，需要重新解析。**
+3. Download images from saved link list.
 
-## 生成微博时间线网页（有限的模板.如需替换请自行手动改动)
-运行`run_timeline.py`(模板请参照`timeline_template`文件夹)
+4. Analyze keywords used by the user
+
+5. Make beautiful timeline web page based on saved posts.
+
+## How to use
+### I. Obtain account cookie.
+
++ Open `weibo.cn`, log into your account (**Not .com, use .cn**).
++ Open browser's web dev tool.
++ Go to *Network* tab, refresh.
++ Click on the *weibo.cn* line; to the right, click *Headers*.
++ Under *Requested headers*, find *Cookie*, copy its content.
+
+### II. Enter your cookie and target user_id
+
+In file `config.py`: enter your copied cookie content and the user_id that you want to scrape.
+
+*Please don't use the same user for both the cookie and the target user_id*
+   
+
+### III. Download weibo posts
+
+Use `run_read.py`.
+
+This file will use your cookie to access weibo.cn (mobile version) by mimicing internet request. The file will read user_id's user profile first, then all posts content by reverse chronological order (newest first).
+
+Output files are: `user_id.txt`, `user_id-compact.txt`, `imgref_list.txt`. They are located at `/weibo/user_id/` directory.
+
++ `user_id.txt` contains user profile info and weibo posts. Each post contains post content and retweet/like statistics and ordered in reverse chronological order.
++ `user_id-compact.txt` contains posts content only, in the same order.
++ `imgref_list.txt` contains each post's image *reference url*, which is used by weibo.com to locate the actual image url. They are stored in the same order as post. If multiple images are present for one post, a *group reference url* is used.
+
+### IV. Decode image reference urls (OPTIONAL)
+
+*The image downloading process is separated into 3 scripts because they all take a long time. It is easier to continue working and debugging with small steps. Because weibo.com saves images at different servers, some image links could not be obtained.* 
+
+Use `run_imgreflist.py`.
+
+This script browses through every *reference url* stored in `imgref_list.txt` and tries to decode it by making a http post to weibo.com's server. The decoded *direct download link* is stored in `img_list.txt` in the same order. If the http post times out, the *reference url* will be stored anyway to reserve the correct order. 
+
+If *group reference link* is found, the script will try to decode all images under this group link. The program does not check the completion of gorup decoding however.
+
+Output file: `img_list.txt`
+
+`img_list.txt` will be stored at `\weibo\user_id`.
+
+#### Continue decoding
+
+It is possible to manually continuing decoding process if the script hangs after long execution time.
+
+To do that:
+
++ Edit file `run_imgreflist.py`.
++ Find the line `decode_imgreflist(base_dir + os.path.sep + list_path, 1)`. Change the last number to the last recorded index number in `img_list.txt`.
++ Save and quit.
++ Run `run_imgreflist.py` again.
+
+A new `img_list.txt` file will be created; the previous file will be renamed with datetime (for example: `img_list-20180101.txt`).
+
++ After completion of decoding all reference urls, combine all `img_list-.txt` files in reverse chronological order.
+
+### V. Download images (OPTIONAL)
+
+1. Check `img_list.txt`
+
+Now you have `img_list.txt` that is supposed to contain all *direct download links* for each image from all posts. But some of the direct links might still be *reference links* (a timeout remedy issue). In this case, run `run_fix.py`, which basically go through all links and re-decode any reference urls.
+
+This operation will create `img_list-new.txt`. Rename it to `img_list.txt`. I did not do that automatically because you might want to check the files before starting downloads.
+
+2. Run `run_downloadimage.py`
+
+This script will download images from *direct download links* contained in `img_list.txt`
+
+Images are stored at `/weibo/user_id/images/fromlist/`. Every post will have its own folder named with its index (used in `user_id.txt`).
+
+*Continue download* is supported. Just run this script again. Downloaded images will be skipped automatically.
 
 
-## 输出
-1. /weibo/user_id/user_id.txt
-2. /weibo/user_id/imgref_list.txt
-3. /weibo/user_id/img_list.txt
-4. /weibo/user_id/images/fromlist/downloaded images 
+### VI. Generate timeline web page
 
-## 技术修正
-1. 为每N页面读取添加停顿，避免访问次数过多 [x]
-2. 为每个requests添加timeout [x]
-3. 使用BeautifulSoup("lxml")避免etree安全性问题 [x]
+Run `run_timeline.py`. This script extracts all posts content and their statistics, and generate a HTML timeline with css. The timeline uses template saved in `\timeline_template\`. You can change the script to use your own template. For more information, read the script.
 
-## 参考和鸣谢
+
+## Complete list of output files
+1. `/weibo/user_id/user_id.txt` (contains all user info and posts)
+2. `/weibo/user_iduser_id-compact.txt` (contains compacted posts only)
+3. `/weibo/user_id/imgref_list.txt` (contains image reference links)
+4. `/weibo/user_id/img_list.txt` (contains image direct download links)
+5. `/weibo/user_id/images/fromlist/downloaded images/` (contians image files)
+
+# Changelog (2018.06.23)
+1. Add pauses after every N page read for polite web scraping
+2. Add timeout exception handler
+3. Use BeautifulSoup insdead of lxml for better security
+4. Bilingual README
+
+# Acknowledgement and Reference
 [weiboSpider](https://github.com/knightReigh/weiboSpider-1)
+
 [weiboAnalysis](https://github.com/dingmyu/weibo_analysis)
 
-**请确保所有.py文件在同一目录下且当前用户拥有文件系统读写权限**
+# Copyright
+The program is licensed under [MIT](https://opensource.org/licenses/MIT). 
 
+The script only provides a tool to obtain open, published internet content on weibo.com. Please obtain any necessary permission to use any weibo user's posts content or images, and comply by any copyrights laws. 
 
-大概就是这样～其他功能还在开发中，欢迎建议。
+The author of this script is not responsible for any act of users or copyright infringement. Please use under your own discretion.
