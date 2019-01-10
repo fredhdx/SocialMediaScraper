@@ -24,6 +24,8 @@ from bs4 import BeautifulSoup
 import utilities
 import platform
 
+import csv
+
 
 class Weibo:
 
@@ -586,6 +588,17 @@ class Weibo:
                     "retweet_num":meta[i]['retweet_num'],"comment_num":meta[i]['comment_num'], \
                     "imgref": "", "imgsetref":""}
             self.weibo.append(_weibo)
+
+    def write_csv(self, filepath):
+        with open(filepath, "w", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter=',')
+            csv_writer.writerow(["index", "content", "publish_time", "likes", "retweet", "comments"])
+            for i in range(1, len(self.weibo) + 1):
+                csv_writer.writerow([str(i), self.weibo[i - 1]['weibo_content'], \
+                    str(self.weibo[i-1]['publish_time']), \
+                    str(self.weibo[i - 1]['up_num']), \
+                    str(self.weibo[i - 1]['retweet_num']), \
+                    str(self.weibo[i - 1]['comment_num'])])
 
     # check file backup
     def check_backup(self):
